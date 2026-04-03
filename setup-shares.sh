@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # setup-shares.sh - Create ZFS datasets and configure NFS/SMB shares on TrueNAS SCALE
 # Usage: ./setup-shares.sh <truenas_ip>
 
-set -e
+set -euo pipefail
 
-TRUENAS_IP="${1:-91.99.101.94}"
+TRUENAS_IP="${1:?Usage: $0 <truenas_ip>}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
 SSH_USER="truenas_admin"
 SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=no"
@@ -59,7 +59,7 @@ echo "  ✓ NFS exports configured"
 # Step 5: Configure SMB shares
 echo "Step 5: Configuring SMB shares..."
 for ds in public engineering finance shared-projects management private; do
-  smb_name=$(echo "$ds" | sed 's/-/_/g')
+  smb_name="${ds//-/_}"
   if $SSH "sudo net conf listshares | grep -q $smb_name" 2>/dev/null; then
     echo "  ✓ SMB share $smb_name already exists"
   else

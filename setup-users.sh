@@ -34,13 +34,13 @@ echo ""
 echo "=== Getting group IDs ==="
 
 # Get group IDs
-GROUP_IDS=$(run_midclt "midclt call group.query '[[\"group\",\"in\",[\"engineering\",\"finance\",\"management\",\"contractors\"]]]'" | python3 << 'PYEOF'
+GROUP_JSON=$(run_midclt "midclt call group.query '[[\"group\",\"in\",[\"engineering\",\"finance\",\"management\",\"contractors\"]]]'")
+GROUP_IDS=$(echo "$GROUP_JSON" | python3 -c '
 import sys, json
 groups = json.load(sys.stdin)
 for g in groups:
-    print(f"{g['group']}={g['id']}")
-PYEOF
-)
+    print(f"{g[\"group\"]}={g[\"id\"]}")
+')
 
 # Parse group IDs into variables
 declare -A GROUP_MAP
@@ -82,7 +82,7 @@ for user_spec in "${USERS[@]}"; do
         # Convert space-separated group IDs to JSON array
         groups_json="[$(echo "$groups" | tr ' ' ',' )]"
         
-        run_midclt "midclt call user.create '{\"username\": \"$username\", \"full_name\": \"$(echo $username | sed 's/^./\U&/')\", \"password\": \"$password\", \"shell\": \"/usr/bin/bash\", \"group_create\": true, \"groups\": $groups_json}'" > /dev/null
+        run_midclt "midclt call user.create '{\"username\": \"$username\", \"full_name\": \"${username^}\", \"password\": \"$password\", \"shell\": \"/usr/bin/bash\", \"group_create\": true, \"groups\": $groups_json}'" > /dev/null
     fi
 done
 
@@ -90,13 +90,13 @@ echo ""
 echo "=== Enabling SSH password login ==="
 
 # Get user IDs and enable SSH password login
-USER_IDS=$(run_midclt "midclt call user.query '[[\"username\",\"in\",[\"alice\",\"bob\",\"carol\",\"dave\",\"eve\"]]]'" | python3 << 'PYEOF'
+USER_JSON=$(run_midclt "midclt call user.query '[[\"username\",\"in\",[\"alice\",\"bob\",\"carol\",\"dave\",\"eve\"]]]'")
+USER_IDS=$(echo "$USER_JSON" | python3 -c '
 import sys, json
 users = json.load(sys.stdin)
 for u in users:
-    print(f"{u['username']}={u['id']}")
-PYEOF
-)
+    print(f"{u[\"username\"]}={u[\"id\"]}")
+')
 
 while IFS='=' read -r username user_id; do
     # Check if SSH password is already enabled
@@ -111,21 +111,23 @@ done <<< "$USER_IDS"
 echo ""
 echo "=== Verification ==="
 echo "Users created:"
-run_midclt "midclt call user.query '[[\"username\",\"in\",[\"alice\",\"bob\",\"carol\",\"dave\",\"eve\"]]]'" | python3 << 'PYEOF'
+USERS_JSON=$(run_midclt "midclt call user.query '[[\"username\",\"in\",[\"alice\",\"bob\",\"carol\",\"dave\",\"eve\"]]]'")
+echo "$USERS_JSON" | python3 -c '
 import sys, json
 users = json.load(sys.stdin)
-for u in sorted(users, key=lambda x: x['username']):
-    print(f"  {u['username']:10} uid={u['uid']:5} ssh_password_enabled={u['ssh_password_enabled']}")
-PYEOF
+for u in sorted(users, key=lambda x: x["username"]):
+    print(f"  {u[\"username\"]:10} uid={u[\"uid\"]:5} ssh_password_enabled={u[\"ssh_password_enabled\"]}")
+'
 
 echo ""
 echo "Groups created:"
-run_midclt "midclt call group.query '[[\"group\",\"in\",[\"engineering\",\"finance\",\"management\",\"contractors\"]]]'" | python3 << 'PYEOF'
+GROUPS_JSON=$(run_midclt "midclt call group.query '[[\"group\",\"in\",[\"engineering\",\"finance\",\"management\",\"contractors\"]]]'")
+echo "$GROUPS_JSON" | python3 -c '
 import sys, json
 groups = json.load(sys.stdin)
-for g in sorted(groups, key=lambda x: x['group']):
-    print(f"  {g['group']:15} id={g['id']:3} gid={g['gid']:5}")
-PYEOF
+for g in sorted(groups, key=lambda x: x["group"]):
+    print(f"  {g[\"group\"]:15} id={g[\"id\"]:3} gid={g[\"gid\"]:5}")
+'
 
 echo ""
 echo "Setup complete!"
